@@ -23,7 +23,7 @@ Stop switching between Chinese and English search results.<br>
 
 <br>
 
-Keyword search · Chinese auto-translate · AI semantic search<br>
+Keyword search · Bilingual search (Chinese + English) · AI semantic search<br>
 Star sorting · Category filter · Save to JSON · Install commands
 
 [Install](#install) · [Usage](#usage) · [Commands](#commands) · [Configuration](#configuration) · [Demo](#demo)
@@ -39,8 +39,9 @@ Star sorting · Category filter · Save to JSON · Install commands
 | Feature | Description |
 |---------|-------------|
 | Keyword Search | Find skills by name, description, or functionality |
-| Bilingual Search | Chinese + English, auto-translates and merges results |
+| Bilingual Search | Chinese + English parallel search and merge results |
 | AI Concurrent Search | Keyword + AI semantic search simultaneously |
+| Project Analysis | Dump project info for AI agent to decide search keywords |
 | Star Sorting | Discover popular and well-maintained skills |
 | Category Filtering | Browse by category (devops, research, creative, etc.) |
 | Occupation Filtering | Find skills relevant to your role |
@@ -53,23 +54,37 @@ Star sorting · Category filter · Save to JSON · Install commands
 
 ## Install
 
-### The Easiest Way
+### For AI Agents
 
-Copy and paste this to your AI agent (Claude Code, Codex, Cursor, etc.):
+See [INSTALL.md](INSTALL.md) for platform detection and installation steps.
 
+Quick install (run the command matching your platform):
+
+```bash
+# Claude Code
+git clone https://github.com/rbetree/skillsmp-find.git ~/.claude/skills/skillsmp-find
+
+# Codex CLI
+git clone https://github.com/rbetree/skillsmp-find.git ~/.codex/skills/skillsmp-find
+
+# Hermes Agent
+git clone https://github.com/rbetree/skillsmp-find.git ~/.hermes/skills/research/skillsmp-find
+
+# Universal path (Gemini CLI, Kiro, Antigravity, others)
+git clone https://github.com/rbetree/skillsmp-find.git ~/.agents/skills/skillsmp-find
 ```
-Clone https://github.com/rbetree/skillsmp-find.git and install it for you.
-```
 
-That's it. Your agent will figure out the rest.
+After installation, tell the user: "Installed! Type `/skillsmp-find` or describe what you want to search."
 
-### One-Click Install
+### For Humans
+
+#### One-Click Install (Interactive Menu)
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/rbetree/skillsmp-find/main/install.sh | bash
 ```
 
-Interactive menu lets you choose: Claude Code, Codex, Hermes, OpenClaw, Cursor, or all.
+Choose your platform: Claude Code, Codex, Hermes, OpenClaw, or all.
 
 Or specify directly:
 
@@ -79,7 +94,7 @@ Or specify directly:
 ./install.sh --all
 ```
 
-### Manual Install
+#### Manual Install
 
 ```bash
 # Claude Code
@@ -93,6 +108,16 @@ git clone https://github.com/rbetree/skillsmp-find.git ~/.hermes/skills/research
 ```
 
 See [INSTALL.md](INSTALL.md) for all platforms and detailed configuration.
+
+### After Installation
+
+Use `/skillsmp-find` or describe what you want to search:
+
+```
+帮我找一个代码审查的 skill
+search skills for web scraping
+有没有 Docker 相关的 skill？
+```
 
 ---
 
@@ -130,11 +155,14 @@ python scripts/search.py ai-search "how to automate browser testing"
 python scripts/search.py ai-search "web scraping with cloudflare bypass" -v
 ```
 
-### Check Status
+### Analyze Project (for AI agents)
 
 ```bash
-python scripts/search.py info      # API status & rate limits
-python scripts/search.py config    # Current configuration
+# Dump project info — AI agent reads this, decides keywords, then searches
+python scripts/search.py analyze /path/to/project
+
+# JSON output for programmatic consumption
+python scripts/search.py analyze . --json
 ```
 
 ---
@@ -154,6 +182,8 @@ python scripts/search.py config    # Current configuration
 | `search "query" --category devops` | Filter by category |
 | `search "query" --occupation software-developers` | Filter by occupation |
 | `ai-search "query"` | AI semantic search (needs API key) |
+| `analyze .` | Dump project info (deps, languages, traits) |
+| `analyze . --json` | Project info as JSON (for AI consumption) |
 | `info` | Check API status & rate limits |
 | `config` | Show current configuration |
 
@@ -290,6 +320,8 @@ skillsmp-find/
 - **AI search requires API key**: Returns `MISSING_API_KEY` error without it.
 - **Skills are from GitHub**: Always review before installing — check the source repo.
 - **Pagination**: Large result sets require multiple pages. Check `hasNext` in response.
+- **Network resilience**: The tool automatically retries failed network requests (3 attempts with exponential backoff).
+- **Config security**: Config files with API keys should have secure permissions (600). The tool warns if config files are world-readable.
 
 ---
 

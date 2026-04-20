@@ -23,7 +23,7 @@
 
 <br>
 
-关键词搜索 · 中文自动翻译 · AI 语义搜索<br>
+关键词搜索 · 双语搜索（中英对照） · AI 语义搜索<br>
 按星排序 · 分类过滤 · 保存 JSON · 获取安装命令
 
 [安装](#安装) · [使用](#使用) · [命令速查](#命令速查) · [配置](#配置) · [演示](#演示)
@@ -39,7 +39,7 @@
 | 功能 | 说明 |
 |------|------|
 | 关键词搜索 | 按名称、描述或功能查找技能 |
-| 双语搜索 | 中文 + 英文，自动翻译并合并结果 |
+|| 双语搜索 | 中文 + 英文并行搜索并合并结果 |
 | AI 并发搜索 | 关键词 + AI 语义搜索同时执行 |
 | 按星排序 | 发现热门且维护良好的技能 |
 | 分类过滤 | 按类别浏览（devops、research、creative 等） |
@@ -53,23 +53,37 @@
 
 ## 安装
 
-### 最简单的方式
+### 给 AI Agent
 
-复制下面这段发给你的 AI Agent（Claude Code、Codex、Cursor 等）：
+如果你是 AI Agent，请查看 [INSTALL.md](../../INSTALL.md) 获取平台检测和安装步骤。
 
+快速安装（运行对应平台的命令）：
+
+```bash
+# Claude Code
+git clone https://github.com/rbetree/skillsmp-find.git ~/.claude/skills/skillsmp-find
+
+# Codex CLI
+git clone https://github.com/rbetree/skillsmp-find.git ~/.codex/skills/skillsmp-find
+
+# Hermes Agent
+git clone https://github.com/rbetree/skillsmp-find.git ~/.hermes/skills/research/skillsmp-find
+
+# 通用路径（Gemini CLI、Kiro、Antigravity 等）
+git clone https://github.com/rbetree/skillsmp-find.git ~/.agents/skills/skillsmp-find
 ```
-帮我把 https://github.com/rbetree/skillsmp-find.git 克隆并安装到你对应的位置。
-```
 
-就这样，Agent 会自己搞定。
+安装完成后告诉用户："已安装！输入 `/skillsmp-find` 或直接描述你想搜索的内容。"
 
-### 一键安装
+### 给人类用户
+
+#### 一键安装（交互式菜单）
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/rbetree/skillsmp-find/main/install.sh | bash
 ```
 
-交互式菜单选择平台：Claude Code、Codex、Hermes、OpenClaw、Cursor，或全部安装。
+选择平台：Claude Code、Codex、Hermes、OpenClaw，或全部安装。
 
 或直接指定：
 
@@ -79,7 +93,7 @@ curl -sSL https://raw.githubusercontent.com/rbetree/skillsmp-find/main/install.s
 ./install.sh --all
 ```
 
-### 手动安装
+#### 手动安装
 
 ```bash
 # Claude Code
@@ -93,6 +107,16 @@ git clone https://github.com/rbetree/skillsmp-find.git ~/.hermes/skills/research
 ```
 
 详见 [INSTALL.md](../../INSTALL.md) 了解所有平台和详细配置。
+
+### 安装后使用
+
+输入 `/skillsmp-find` 或直接描述你想搜索的内容：
+
+```
+帮我找一个代码审查的 skill
+search skills for web scraping
+有没有 Docker 相关的 skill？
+```
 
 ---
 
@@ -290,6 +314,8 @@ skillsmp-find/
 - **AI 搜索需要 API Key**：没有 API Key 会返回 `MISSING_API_KEY` 错误。
 - **技能来自 GitHub**：安装前请务必检查来源仓库。
 - **分页**：大量结果需要翻页查看，检查响应中的 `hasNext` 字段。
+- **网络重试**：工具会自动重试失败的网络请求（最多 3 次，指数退避）。
+- **配置文件安全**：包含 API Key 的配置文件应具有安全权限（600）。如果配置文件全局可读，工具会发出警告。
 
 ---
 

@@ -55,10 +55,6 @@ install_openclaw() {
     install_to "$HOME/.openclaw/workspace/skills/$SKILL_NAME" "OpenClaw"
 }
 
-install_cursor() {
-    install_to ".cursor/skills/$SKILL_NAME" "Cursor"
-}
-
 install_all() {
     install_claude_code_global
     install_codex
@@ -66,8 +62,8 @@ install_all() {
     install_agents
     install_openclaw
     echo ""
-    info "Note: Claude Code (project) and Cursor require running this script"
-    info "inside your project directory with --claude-code --project or --cursor."
+    info "Note: Claude Code (project) requires running this script"
+    info "inside your project directory with --claude-code --project."
 }
 
 show_help() {
@@ -83,7 +79,6 @@ Options:
   --hermes              Install for Hermes Agent
   --agents              Install to shared agent directory (~/.agents/skills/)
   --openclaw            Install for OpenClaw
-  --cursor              Install for Cursor (project-level)
   --all                 Install for all global platforms
   -h, --help            Show this help
 
@@ -110,11 +105,10 @@ interactive_menu() {
     echo "  4) Hermes Agent              ~/.hermes/skills/research/"
     echo "  5) Agent shared directory    ~/.agents/skills/"
     echo "  6) OpenClaw                  ~/.openclaw/workspace/skills/"
-    echo "  7) Cursor                    .cursor/skills/"
-    echo "  8) All global platforms"
+    echo "  7) All global platforms"
     echo "  0) Exit"
     echo ""
-    read -rp "Enter choices (e.g. 1 3 5, or 8 for all): " choices
+    read -rp "Enter choices (e.g. 1 3 5, or 7 for all): " choices
 
     for c in $choices; do
         case $c in
@@ -124,8 +118,7 @@ interactive_menu() {
             4) install_hermes ;;
             5) install_agents ;;
             6) install_openclaw ;;
-            7) install_cursor ;;
-            8) install_all ;;
+            7) install_all ;;
             0) echo "Bye."; exit 0 ;;
             *) warn "Unknown option: $c" ;;
         esac
@@ -163,9 +156,6 @@ while [ $# -gt 0 ]; do
             ;;
         --openclaw)
             install_openclaw
-            ;;
-        --cursor)
-            install_cursor
             ;;
         --all)
             install_all
