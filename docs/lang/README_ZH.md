@@ -36,10 +36,19 @@
 
 ## 功能特性
 
+skillsmp-find 是一个多生态适配的 AI Agent Skill 搜索工具。AgentSkills 是一等开放标准契约；Codex 和 Claude Code 是重点验证目标；Hermes、OpenClaw 与通用 `~/.agents/skills` 路径保持文档级兼容。
+
+| 生态 | 支持级别 | 说明 |
+|------|----------|------|
+| AgentSkills | 一等支持 | 开放标准 `SKILL.md` 契约 |
+| Codex | 重点验证 | 包含 `agents/openai.yaml` UI 元数据 |
+| Claude Code | 重点验证 | 已记录全局与项目级 skill 路径 |
+| Hermes / OpenClaw / 通用 agents | 文档兼容 | 记录兼容路径；不作为发布阻断项 |
+
 | 功能 | 说明 |
 |------|------|
 | 关键词搜索 | 按名称、描述或功能查找技能 |
-|| 双语搜索 | 中文 + 英文并行搜索并合并结果 |
+| 双语搜索 | 中文 + 英文并行搜索并合并结果 |
 | AI 并发搜索 | 关键词 + AI 语义搜索同时执行 |
 | 按星排序 | 发现热门且维护良好的技能 |
 | 分类过滤 | 按类别浏览（devops、research、creative 等） |
@@ -150,9 +159,12 @@ python scripts/search.py search "testing" --occupation software-developers-15125
 ```bash
 export SKILLSMP_API_KEY=***
 
+python scripts/search.py search "browser automation" --ai
 python scripts/search.py ai-search "how to automate browser testing"
 python scripts/search.py ai-search "web scraping with cloudflare bypass" -v
 ```
+
+对 AI Agent 来说，如果已经配置 API Key，默认优先使用 `search "query" --ai`，因为它会保留关键词召回，同时加入语义结果。当用户需要精确名称、slug、分类/职业过滤或确定性分页时，再使用纯关键词搜索。只有在纯语义探测或排查语义相关性时，才优先使用 `ai-search`。
 
 ### 查看状态
 
@@ -161,6 +173,18 @@ python scripts/search.py info      # API 状态和速率限制
 python scripts/search.py config    # 当前配置
 ```
 
+AI Agent 决策规则：
+
+- 给本地仓库推荐技能时，先运行 `analyze /path/to/project --json` 再搜索。
+- 中文请求先生成短英文关键词，并使用 `-b` 做中英双语搜索。
+- 已配置 API Key 时，发现类任务优先使用 `search "query" --ai`。
+- 常规推荐使用 `--limit 5`；只有需要更宽比较时才使用 10-20。
+- 对新鲜度敏感的发现任务保留默认 `recent` 排序；用户要热门、成熟或高信号结果时使用 `--sort stars --limit 5`。
+- 只有用户给出 slug 或明确分类/职业范围时，才使用 `--category` 或 `--occupation`。
+- 需要给后续工具或分析复用结果时，使用 `--json` 或 `--save FILE`。
+- 汇报前 3-5 个结果，包含来源链接、stars、可用的来源标签，以及适配/风险说明。stars 只能视为热度信号，不代表质量保证。
+- 用户询问安装方法时，使用 `-v` 获取线索，但只总结链接并提醒先审查来源。
+
 ---
 
 ## 命令速查
@@ -168,7 +192,7 @@ python scripts/search.py config    # 当前配置
 | 命令 | 说明 |
 |------|------|
 | `search "query"` | 关键词搜索 |
-| `search "前端鉴权" -b` | 双语搜索（中文 + 英文） |
+| `search "前端鉴权" -b "frontend authorization"` | 双语搜索（中文 + 英文） |
 | `search "query" --ai` | 关键词 + AI 并发搜索 |
 | `search "query" --save results.json` | 保存结果为 JSON 文件 |
 | `search "query" --sort stars` | 按星排序 |
@@ -191,7 +215,17 @@ python scripts/search.py config    # 当前配置
 export SKILLSMP_API_KEY=***
 ```
 
-### 方式二：配置文件
+### 方式二：仓库根目录 `.env` 文件
+
+在仓库根目录复制示例文件：
+
+```bash
+cp .env.example .env
+```
+
+然后编辑 `.env`，填入真实 API Key。CLI 启动时会自动读取，无需额外依赖。
+
+### 方式三：配置文件
 
 ```bash
 mkdir -p ~/.skillsmp
@@ -202,16 +236,17 @@ default_sort: recent
 EOF
 ```
 
-### 方式三：Hermes 配置
+### 方式四：Hermes 配置
 
 ```bash
 hermes config set skills.config.skillsmp.api_key ***
 ```
 
 **优先级顺序：**
-1. 环境变量 `SKILLSMP_API_KEY`（最高）
-2. 配置文件 `~/.skillsmp/config.yaml`
-3. Hermes 配置 `~/.hermes/config.yaml`
+1. Shell 环境变量 `SKILLSMP_API_KEY`（最高）
+2. 仓库根目录 `.env`
+3. 配置文件 `~/.skillsmp/config.yaml`
+4. Hermes 配置 `~/.hermes/config.yaml`
 
 ### 获取 API Key
 
@@ -253,7 +288,7 @@ $ python scripts/search.py search "auth" --sort stars --limit 3
 ### 双语搜索
 
 ```
-$ python scripts/search.py search "前端鉴权" -b --limit 5
+$ python scripts/search.py search "前端鉴权" -b "frontend authorization" --limit 5
 
 ============================================================
 搜索 前端鉴权 + authorization frontend 共 10 条
@@ -293,11 +328,15 @@ python scripts/search.py search "web scraping"
 
 ```
 skillsmp-find/
+├── agents/
+│   └── openai.yaml      # Codex UI 元数据
 ├── scripts/
-│   └── search.py         # 主 CLI 脚本（零依赖）
+│   ├── search.py         # 主 CLI 脚本（零依赖）
+│   └── validate_skill.py # 多生态 Skill 契约校验
 ├── docs/
 │   └── lang/
 │       └── README_ZH.md  # 中文文档
+├── AGENTS.md             # 仓库级 AI Agent 上下文
 ├── SKILL.md              # Agent 技能定义
 ├── INSTALL.md            # 详细安装指南
 ├── install.sh            # 一键安装脚本

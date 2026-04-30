@@ -17,6 +17,9 @@ Configuration:
     Environment variable (recommended):
         export SKILLSMP_API_KEY=sk_live_xxxxx
 
+    Or repository .env file:
+        SKILLSMP_API_KEY=sk_live_xxxxx
+
     Or config file (~/.skillsmp/config.yaml):
         api_key: sk_live_xxxxx
         default_limit: 20
@@ -25,24 +28,24 @@ Configuration:
     Or hermes config.yaml (if using hermes agent):
         skills.config.skillsmp.api_key: sk_live_xxxxx
 
-Priority: Environment Variable > ~/.skillsmp/config.yaml > hermes config.yaml
+Priority: Environment Variable > repository .env > ~/.skillsmp/config.yaml > hermes config.yaml
 
 Get API key: https://skillsmp.com/docs/api
 """
 
 from __future__ import annotations
 
-import sys
 import json
 import argparse
 import os
 import re
+import sys
 import threading
 import time
-from typing import Any, Dict, List, Optional, Set, Tuple
-from urllib.request import Request, urlopen
-from urllib.parse import urlencode
+from typing import Any, Dict, Optional
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 # ANSI colors for terminal output
 BOLD  = "\033[1m"
@@ -60,8 +63,6 @@ API_TIMEOUT = 10
 MAX_LIMIT = 100
 LOW_QUOTA_THRESHOLD = 10
 
-
-
 # Optional yaml support (zero-config works without it)
 try:
     import yaml
@@ -72,15 +73,60 @@ except ImportError:
 BASE_URL = "https://skillsmp.com/api/v1"
 CONFIG_PATH = os.path.expanduser("~/.skillsmp/config.yaml")
 HERMES_CONFIG_PATH = os.path.expanduser("~/.hermes/config.yaml")
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DOTENV_PATH = os.path.join(REPO_ROOT, ".env")
+
+
+def _strip_wrapped_quotes(value: str) -> str:
+    """去除 .env 值两端成对包裹的引号。"""
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+        return value[1:-1]
+    return value
+
+
+def load_dotenv(dotenv_path: Optional[str] = None, override: bool = False) -> bool:
+    """从仓库根目录加载 .env，默认不覆盖现有环境变量。"""
+    dotenv_path = dotenv_path or DOTENV_PATH
+    if not os.path.exists(dotenv_path):
+        return False
+
+    try:
+        with open(dotenv_path, "r", encoding="utf-8") as f:
+            for raw_line in f:
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+
+                if line.startswith("export "):
+                    line = line[7:].strip()
+
+                if "=" not in line:
+                    continue
+
+                key, value = line.split("=", 1)
+                key = key.strip()
+                if not key:
+                    continue
+
+                value = _strip_wrapped_quotes(value.strip())
+                if override or key not in os.environ:
+                    os.environ[key] = value
+        return True
+    except OSError as e:
+        print(f"{GRAY}Warning: Failed to load .env file: {e}{RESET}", file=sys.stderr)
+        return False
 
 
 def load_config() -> Dict[str, Any]:
-    """Load skillsmp config from multiple sources (priority: env > ~/.skillsmp > hermes)."""
+    """Load skillsmp config from multiple sources (priority: env/.env > ~/.skillsmp > hermes)."""
     config = {
         "api_key": "",
         "default_limit": 20,
         "default_sort": "recent"
     }
+
+    # 从仓库根目录加载 .env，但不覆盖外部环境变量。
+    load_dotenv()
     
     # Helper function to check file permissions
     def check_file_permissions(filepath: str) -> bool:
@@ -256,6 +302,8 @@ def search_skills(query: str, page: int = 1, limit: int = 20, sort_by: str = "re
     if bilingual_query:
         queries.append(bilingual_query)
 
+    is_single_keyword_search = len(queries) == 1 and not (with_ai and api_key)
+
     # Concurrent search
     results = {
         "kw": {},      # keyword search results
@@ -300,6 +348,22 @@ def search_skills(query: str, page: int = 1, limit: int = 20, sort_by: str = "re
         t.start()
     for t in threads:
         t.join()
+
+    if is_single_keyword_search:
+        source_key = "cn" if has_chinese else "kw"
+        result = results.get(source_key, {})
+        if result.get("success"):
+            outer = result.get("data", {})
+            inner = outer.get("data", {})
+            source_tags = {
+                s.get("id"): source_key
+                for s in inner.get("skills", [])
+                if s.get("id")
+            }
+            result["_source_tags"] = source_tags
+            result["_queries"] = queries
+            result["_has_ai"] = False
+        return result
 
     # Merge results
     merged_skills = {}
@@ -384,7 +448,8 @@ def search_skills(query: str, page: int = 1, limit: int = 20, sort_by: str = "re
         
         return {"success": False, "message": f"All {len(results)} searches failed"}
 
-    # Sort by stars
+    # Sort merged local results by stars. Pagination now describes the merged page,
+    # not SkillsMP's upstream pagination for any single query.
     sorted_skills = sorted(merged_skills.values(), key=lambda x: -x.get("stars", 0))
 
     # Build result
@@ -401,6 +466,7 @@ def search_skills(query: str, page: int = 1, limit: int = 20, sort_by: str = "re
                     "totalPages": 1,
                     "hasNext": False,
                     "hasPrev": False,
+                    "mode": "merged",
                 }
             }
         },
@@ -626,19 +692,23 @@ def print_config(config):
     print(f"Default Limit: {config['default_limit']}")
     print(f"Default Sort: {config['default_sort']}")
 
-    print(f"\n📁 Config Sources (priority: env > file):")
+    print(f"\n📁 Config Sources (priority: env/.env > file):")
     env_status = '✓' if os.environ.get('SKILLSMP_API_KEY') else '✗'
+    dotenv_status = '✓' if os.path.exists(DOTENV_PATH) else '✗'
     print(f"  1. Environment: SKILLSMP_API_KEY {env_status}")
-    print(f"  2. Config file: {CONFIG_PATH} {'✓' if os.path.exists(CONFIG_PATH) else '✗'}")
-    print(f"  3. Hermes config: {HERMES_CONFIG_PATH} {'✓' if os.path.exists(HERMES_CONFIG_PATH) else '✗'}")
+    print(f"  2. Repo .env: {DOTENV_PATH} {dotenv_status}")
+    print(f"  3. Config file: {CONFIG_PATH} {'✓' if os.path.exists(CONFIG_PATH) else '✗'}")
+    print(f"  4. Hermes config: {HERMES_CONFIG_PATH} {'✓' if os.path.exists(HERMES_CONFIG_PATH) else '✗'}")
 
     print(f"\n📝 Set config:")
     print(f"  Option 1 - Environment variable (recommended):")
     print(f"    export SKILLSMP_API_KEY=***")
-    print(f"  Option 2 - Config file (requires PyYAML):")
+    print(f"  Option 2 - Repo .env file:")
+    print(f"    echo 'SKILLSMP_API_KEY=***' > {DOTENV_PATH}")
+    print(f"  Option 3 - Config file (requires PyYAML):")
     print(f"    mkdir -p ~/.skillsmp")
     print(f"    echo 'api_key: sk_live_xxxxx' > {CONFIG_PATH}")
-    print(f"  Option 3 - Hermes config (if using hermes agent):")
+    print(f"  Option 4 - Hermes config (if using hermes agent):")
     print(f"    hermes config set skills.config.skillsmp.api_key YOUR_KEY")
 
 
@@ -1066,6 +1136,7 @@ Examples:
 
 Configuration:
   export SKILLSMP_API_KEY=***             # Set API key (recommended)
+  Or create .env in repo root             # SKILLSMP_API_KEY=***
   Or get key: https://skillsmp.com/docs/api
 """,
     )

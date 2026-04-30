@@ -38,6 +38,9 @@ ENV/
 Thumbs.db
 
 # Config (may contain API keys)
+.env
+.env.*
+!.env.example
 config.yaml
 *.local
 
@@ -45,3 +48,4 @@ config.yaml
 .coverage
 htmlcov/
 .pytest_cache/
+/.serena

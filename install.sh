@@ -132,33 +132,35 @@ if [ $# -eq 0 ]; then
 fi
 
 PROJECT_MODE=false
+INSTALL_CLAUDE_CODE=false
+INSTALL_CODEX=false
+INSTALL_HERMES=false
+INSTALL_AGENTS=false
+INSTALL_OPENCLAW=false
+INSTALL_ALL=false
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --claude-code)
-            if [ "$PROJECT_MODE" = true ]; then
-                install_claude_code_project
-            else
-                install_claude_code_global
-            fi
+            INSTALL_CLAUDE_CODE=true
             ;;
         --project)
             PROJECT_MODE=true
             ;;
         --codex)
-            install_codex
+            INSTALL_CODEX=true
             ;;
         --hermes)
-            install_hermes
+            INSTALL_HERMES=true
             ;;
         --agents)
-            install_agents
+            INSTALL_AGENTS=true
             ;;
         --openclaw)
-            install_openclaw
+            INSTALL_OPENCLAW=true
             ;;
         --all)
-            install_all
+            INSTALL_ALL=true
             ;;
         -h|--help)
             show_help
@@ -172,6 +174,38 @@ while [ $# -gt 0 ]; do
     esac
     shift
 done
+
+if [ "$INSTALL_ALL" = true ] && [ "$PROJECT_MODE" = true ]; then
+    err "--project can only be used with --claude-code"
+    exit 1
+fi
+
+if [ "$INSTALL_ALL" = false ] &&
+   [ "$INSTALL_CLAUDE_CODE" = false ] &&
+   [ "$INSTALL_CODEX" = false ] &&
+   [ "$INSTALL_HERMES" = false ] &&
+   [ "$INSTALL_AGENTS" = false ] &&
+   [ "$INSTALL_OPENCLAW" = false ]; then
+    err "No install target selected."
+    show_help
+    exit 1
+fi
+
+if [ "$INSTALL_ALL" = true ]; then
+    install_all
+else
+    if [ "$INSTALL_CLAUDE_CODE" = true ]; then
+        if [ "$PROJECT_MODE" = true ]; then
+            install_claude_code_project
+        else
+            install_claude_code_global
+        fi
+    fi
+    [ "$INSTALL_CODEX" = true ] && install_codex
+    [ "$INSTALL_HERMES" = true ] && install_hermes
+    [ "$INSTALL_AGENTS" = true ] && install_agents
+    [ "$INSTALL_OPENCLAW" = true ] && install_openclaw
+fi
 
 echo ""
 ok "Done!"

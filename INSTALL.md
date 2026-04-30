@@ -1,5 +1,10 @@
 # Installation Guide
 
+skillsmp-find is maintained as a multi-ecosystem AI Agent Skill. AgentSkills is
+the primary open-standard contract; Codex and Claude Code are validated targets;
+Hermes, OpenClaw, and the shared `~/.agents/skills` path are documented
+compatibility targets.
+
 ## Quick Start (For AI Agents)
 
 **Step 1: Detect your platform**
@@ -101,7 +106,17 @@ git clone https://github.com/rbetree/skillsmp-find.git ~/.openclaw/workspace/ski
 export SKILLSMP_API_KEY=***
 ```
 
-### Option 2: Config File
+### Option 2: Repository `.env` File
+
+Copy the example file in the repository root:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` and fill in your API key. The CLI will auto-load this file on startup without extra dependencies.
+
+### Option 3: Config File
 ```bash
 mkdir -p ~/.skillsmp
 cat > ~/.skillsmp/config.yaml << EOF
@@ -111,15 +126,16 @@ default_sort: recent
 EOF
 ```
 
-### Option 3: Hermes Config
+### Option 4: Hermes Config
 ```bash
 hermes config set skills.config.skillsmp.api_key ***
 ```
 
 **Priority order:**
-1. Environment variable `SKILLSMP_API_KEY` (highest)
-2. Config file `~/.skillsmp/config.yaml`
-3. Hermes config `~/.hermes/config.yaml`
+1. Shell environment variable `SKILLSMP_API_KEY` (highest)
+2. Repository `.env`
+3. Config file `~/.skillsmp/config.yaml`
+4. Hermes config `~/.hermes/config.yaml`
 
 ### Get API Key
 

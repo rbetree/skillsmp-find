@@ -36,6 +36,18 @@ Star sorting · Category filter · Save to JSON · Install commands
 
 ## Features
 
+skillsmp-find is a multi-ecosystem AI Agent Skill search tool. AgentSkills is the
+primary open-standard contract; Codex and Claude Code are validated targets;
+Hermes, OpenClaw, and the shared `~/.agents/skills` path are documented
+compatibility targets.
+
+| Ecosystem | Support level | Notes |
+|-----------|---------------|-------|
+| AgentSkills | Primary | Open-standard `SKILL.md` contract |
+| Codex | Validated | Includes `agents/openai.yaml` UI metadata |
+| Claude Code | Validated | Global and project skill paths documented |
+| Hermes / OpenClaw / universal agents | Documented | Compatibility paths documented; not release-blocking |
+
 | Feature | Description |
 |---------|-------------|
 | Keyword Search | Find skills by name, description, or functionality |
@@ -151,9 +163,12 @@ python scripts/search.py search "testing" --occupation software-developers-15125
 ```bash
 export SKILLSMP_API_KEY=***
 
+python scripts/search.py search "browser automation" --ai
 python scripts/search.py ai-search "how to automate browser testing"
 python scripts/search.py ai-search "web scraping with cloudflare bypass" -v
 ```
+
+For AI agents, prefer `search "query" --ai` when an API key is configured because it preserves keyword recall while adding semantic results. Use keyword-only search for exact names, slugs, category/occupation filters, or deterministic pagination. Use `ai-search` only for pure semantic probes or semantic relevance troubleshooting.
 
 ### Analyze Project (for AI agents)
 
@@ -165,6 +180,18 @@ python scripts/search.py analyze /path/to/project
 python scripts/search.py analyze . --json
 ```
 
+AI agent decision rules:
+
+- For local repo recommendations, run `analyze /path/to/project --json` before searching.
+- For Chinese requests, generate a short English keyword and use `-b`.
+- With an API key, prefer `search "query" --ai` for discovery.
+- Use `--limit 5` for normal recommendations; use 10-20 only for broader comparisons.
+- Keep the default `recent` sort for freshness-sensitive discovery; use `--sort stars --limit 5` for popular or mature options.
+- Apply `--category` or `--occupation` only when the user gives a slug or clearly bounded taxonomy target.
+- For reusable downstream output, use `--json` or `--save FILE`.
+- Report the top 3-5 matches with source links, stars, source tags when available, and fit/risk notes. Treat stars as popularity, not proof of quality.
+- For install guidance, use `-v`, summarize links, and ask the user to review source before installing.
+
 ---
 
 ## Commands
@@ -172,7 +199,7 @@ python scripts/search.py analyze . --json
 | Command | Description |
 |---------|-------------|
 | `search "query"` | Keyword search |
-| `search "前端鉴权" -b` | Bilingual search (Chinese + English) |
+| `search "前端鉴权" -b "frontend authorization"` | Bilingual search (Chinese + English) |
 | `search "query" --ai` | Keyword + AI concurrent search |
 | `search "query" --save results.json` | Save results to JSON file |
 | `search "query" --sort stars` | Sort by stars |
@@ -197,7 +224,17 @@ python scripts/search.py analyze . --json
 export SKILLSMP_API_KEY=***
 ```
 
-### Option 2: Config File
+### Option 2: Repository `.env` File
+
+Copy the example file in the repository root:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` and fill in your API key. The CLI will auto-load this file on startup without extra dependencies.
+
+### Option 3: Config File
 
 ```bash
 mkdir -p ~/.skillsmp
@@ -208,16 +245,17 @@ default_sort: recent
 EOF
 ```
 
-### Option 3: Hermes Config
+### Option 4: Hermes Config
 
 ```bash
 hermes config set skills.config.skillsmp.api_key ***
 ```
 
 **Priority order:**
-1. Environment variable `SKILLSMP_API_KEY` (highest)
-2. Config file `~/.skillsmp/config.yaml`
-3. Hermes config `~/.hermes/config.yaml`
+1. Shell environment variable `SKILLSMP_API_KEY` (highest)
+2. Repository `.env`
+3. Config file `~/.skillsmp/config.yaml`
+4. Hermes config `~/.hermes/config.yaml`
 
 ### Get API Key
 
@@ -259,7 +297,7 @@ Rate Limits:
 ### Bilingual Search
 
 ```
-$ python scripts/search.py search "前端鉴权" -b --limit 5
+$ python scripts/search.py search "前端鉴权" -b "frontend authorization" --limit 5
 
 ============================================================
 搜索 前端鉴权 + authorization frontend 共 10 条
@@ -299,11 +337,15 @@ python scripts/search.py search "web scraping"
 
 ```
 skillsmp-find/
+├── agents/
+│   └── openai.yaml      # Codex UI metadata
 ├── scripts/
-│   └── search.py         # Main CLI script (zero dependencies)
+│   ├── search.py         # Main CLI script (zero dependencies)
+│   └── validate_skill.py # Multi-ecosystem skill contract validator
 ├── docs/
 │   └── lang/
 │       └── README_ZH.md  # Chinese documentation
+├── AGENTS.md             # Repository-level AI agent context
 ├── SKILL.md              # Agent skill definition
 ├── INSTALL.md            # Detailed installation guide
 ├── install.sh            # One-click installer
